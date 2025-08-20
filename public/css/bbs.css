@@ -1,0 +1,247 @@
+/* =========================================================
+   Responsive CSS for BBS
+   ファイル: /public/css/bbs.css
+   - モバイル優先（mobile-first）
+   - 主要ブレークポイント: 480px / 768px / 1024px
+   - ダークモード対応、コントラスト/リデュースモーション配慮
+========================================================= */
+
+/* 基本タイポグラフィ & レイアウト */
+:root{
+  --maxw: 72rem;      /* 最大幅 ~ 1152px */
+  --pad:  clamp(12px, 3vw, 24px);
+  --gap:  clamp(8px, 2.5vw, 16px);
+  --bg:   #ffffff;
+  --fg:   #111111;
+  --muted:#666666;
+  --line: #e6e6e6;
+  --accent: #0648ff;
+  --accent-weak: #eef3ff;
+  --btn-bg: #f7f7f7;
+  --btn-bd: #cccccc;
+  --hl:   #fff6d6;
+}
+
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:   #0f1115;
+    --fg:   #e9edf1;
+    --muted:#aab0b7;
+    --line: #2a2f36;
+    --btn-bg:#1a1f26;
+    --btn-bd:#2e3540;
+    --accent-weak:#15203a;
+    --hl:   #2a2719;
+  }
+}
+
+html{ box-sizing:border-box; }
+*,*::before,*::after{ box-sizing:inherit; }
+
+body{
+  margin:0 auto;
+  padding: calc(env(safe-area-inset-top,0) + var(--pad)) var(--pad) var(--pad);
+  max-width: var(--maxw);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  font-size: clamp(15px, 1.4vw, 17px);
+  line-height: 1.65;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+h1{
+  margin: 0 0 calc(var(--pad) * .75);
+  font-size: clamp(20px, 3.6vw, 28px);
+  line-height: 1.2;
+}
+
+/* フォーム */
+#bbs-form{
+  display: grid;
+  gap: var(--gap);
+  padding: var(--pad);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(0deg, transparent, var(--accent-weak));
+}
+
+#bbs-form textarea{
+  width: 100%;
+  min-height: 9.5rem;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+#bbs-form input[type="file"]{
+  inline-size: 100%;
+  max-width: 100%;
+}
+
+#bbs-form button{
+  justify-self: start;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--btn-bd);
+  background: var(--btn-bg);
+  color: var(--fg);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#bbs-form button:hover{ filter: brightness(1.05); }
+#bbs-form button:active{ transform: translateY(1px); }
+#bbs-form button:focus-visible{ outline: 3px solid color-mix(in srgb, var(--accent) 50%, transparent); }
+
+/* 投稿リスト */
+hr{
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: calc(var(--pad) * 1.1) 0;
+}
+
+.entry{
+  padding: calc(var(--pad) * .75) 0;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: calc(var(--pad) * 2); /* アンカー時の余白 */
+}
+
+.entry:last-child{ border-bottom: none; }
+
+.entry-header{
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: .5rem .75rem;
+  align-items: baseline;
+}
+
+.entry-no{
+  font-weight: 800;
+  font-size: clamp(14px, 2.2vw, 16px);
+}
+
+.entry-meta{
+  color: var(--muted);
+  font-size: clamp(12px, 1.8vw, 14px);
+}
+
+.entry-actions{
+  justify-self: end;
+  display: inline-flex;
+  gap: .5rem;
+  align-items: center;
+}
+
+.permalink{
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.permalink:hover{ background: var(--accent-weak); }
+
+.reply-btn{
+  border: 1px solid var(--btn-bd);
+  background: var(--btn-bg);
+  color: var(--fg);
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: clamp(12px, 1.6vw, 14px);
+}
+.reply-btn:hover{ filter: brightness(1.05); }
+.reply-btn:focus-visible{ outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); }
+
+/* 本文 */
+.entry-body{
+  margin-top: .5rem;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.entry-body p{ margin: .4rem 0; }
+
+.reply-anchor{
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.reply-anchor:hover{ text-decoration: underline; }
+
+.highlight{
+  background: var(--hl);
+  transition: background 1.2s ease;
+}
+
+/* 画像 */
+img.post-image{
+  display: block;
+  max-height: 14rem;      /* モバイルでやや大きめ */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+/* 小さめ端末（〜480px）に最適化 */
+@media (max-width: 480px){
+  #bbs-form{
+    padding: calc(var(--pad) * .85);
+  }
+  .entry-header{
+    grid-template-columns: auto 1fr auto;
+    grid-auto-rows: min-content;
+  }
+  .entry-meta{
+    grid-column: 1 / -1;
+    margin-top: .1rem;
+  }
+}
+
+/* タブレット（≥768px）で横幅に余裕が出たとき */
+@media (min-width: 768px){
+  body{
+    padding-left: calc(var(--pad) * 1.25);
+    padding-right: calc(var(--pad) * 1.25);
+  }
+  #bbs-form{
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "ta  ta"
+      "file btn";
+  }
+  #bbs-form textarea{ grid-area: ta; }
+  #bbs-form input[type="file"]{ grid-area: file; align-self: center; }
+  #bbs-form button{ grid-area: btn; justify-self: end; }
+  img.post-image{ max-height: 18rem; }
+}
+
+/* デスクトップ（≥1024px）では余白・視認性を強化 */
+@media (min-width: 1024px){
+  #bbs-form{
+    padding: calc(var(--pad) * 1.2);
+  }
+  .entry{
+    display: grid;
+    grid-template-columns: 1fr minmax(280px, 40%);
+    gap: 0 clamp(12px, 2vw, 24px);
+  }
+  .entry-header{ grid-column: 1 / -1; }
+  .entry-body{ grid-column: 1 / -1; }
+}
+
+/* アクセシビリティ */
+:focus-visible{
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ transition: none !important; animation: none !important; }
+}
+
