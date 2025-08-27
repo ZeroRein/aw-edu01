@@ -31,6 +31,7 @@ docker compose version
 
 ## 3. ソースコード取得
 ```bash
+sudo yum install git -y
 mkdir -p ~/apps && cd ~/apps
 git clone https://github.com/ZeroRein/aw-edu01.git
 cd aw-edu01
