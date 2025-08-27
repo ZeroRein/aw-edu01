@@ -48,7 +48,8 @@ docker compose exec mysql mysql example_db
 CREATE TABLE `bbs_entries` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `body` TEXT NOT NULL,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `bbs_entries` ADD COLUMN image_filename TEXT DEFAULT NULL
 );
 ```
 
