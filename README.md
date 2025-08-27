@@ -39,24 +39,11 @@ mkdir -p ~/apps && cd ~/apps
 git clone https://github.com/ZeroRein/aw-edu01.git
 cd aw-edu01
 ```
-
-ディレクトリ構成:
-```
-aw-edu01/
-├─ nginx/conf.d/
-├─ public/
-├─ Dockerfile
-└─ compose.yml
-```
-
-## 4. Dockerfile / compose.yml
-- Dockerfile: PHP + Nginx 用
-- compose.yml: Web サービス (Dockerfile) + DB サービス (MySQL) を管理
-
 ## 5. データベーステーブル作成
-### (1) 初期SQLファイルを配置する場合
-`docker/mysql/initdb/001_schema.sql`
+### (1) SQL
+```bash
 docker compose exec mysql mysql example_db
+```
 ```sql
 CREATE TABLE `bbs_entries` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
