@@ -15,11 +15,14 @@ ssh -i your-key.pem ec2-user@<EC2_PUBLIC_IP>
 
 ## 2. Docker / Docker Compose インストール
 ```bash
+
 sudo dnf update -y
 sudo dnf install -y docker
 sudo systemctl enable docker
 sudo systemctl start docker
-sudo dnf install -y docker-compose-plugin
+sudo mkdir -p /usr/local/lib/docker/cli-plugins/
+sudo curl -SL https://github.com/docker/compose/releases/download/v2.36.0/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 sudo usermod -aG docker ec2-user
 ```
 
@@ -53,15 +56,13 @@ aw-edu01/
 ## 5. データベーステーブル作成
 ### (1) 初期SQLファイルを配置する場合
 `docker/mysql/initdb/001_schema.sql`
+docker compose exec mysql mysql example_db
 ```sql
-CREATE DATABASE example_db;
-use example_db;
-CREATE TABLE bbs_entries (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  body TEXT NOT NULL,                       -- 投稿本文
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 作成日時
-  image_filename VARCHAR(255) DEFAULT NULL  -- 画像ファイル名（アップロード時に保存）
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `bbs_entries` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `body` TEXT NOT NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 ### (2) phpMyAdmin を利用する場合
