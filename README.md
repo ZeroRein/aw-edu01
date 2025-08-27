@@ -67,14 +67,6 @@ docker ps
 - アプリ: http://<EC2_PUBLIC_IP>/
 - phpMyAdmin: http://<EC2_PUBLIC_IP>:8080/ (追加した場合)
 
-## 7. 運用補足
-- 更新手順:
-```bash
-git pull
-docker compose build
-docker compose up -d
-```
-- DB 永続化: volume 利用
-- HTTPS 化: Nginx + Let’s Encrypt または ALB+ACM
+
 
 ---
