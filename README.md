@@ -6,7 +6,7 @@
 - セキュリティグループ
   - 22/tcp (SSH)
   - 80/tcp (HTTP)
-  - 443/tcp (HTTPS, 必要なら)
+  - 443/tcp (HTTPS)
 
 SSH 接続:
 ```bash
