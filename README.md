@@ -13,7 +13,7 @@ SSH 接続:
 ssh -i your-key.pem ec2-user@<EC2_PUBLIC_IP>
 ```
 
-## 2. Docker / Docker Compose インストール
+## 1. Docker / Docker Compose インストール
 ```bash
 
 sudo dnf update -y
@@ -32,14 +32,14 @@ docker --version
 docker compose version
 ```
 
-## 3. ソースコード取得
+## 2. ソースコード取得
 ```bash
 sudo yum install git -y
 mkdir -p ~/apps && cd ~/apps
 git clone https://github.com/ZeroRein/aw-edu01.git
 cd aw-edu01
 ```
-## 5. データベーステーブル作成
+## 3. データベーステーブル作成
 ### (1) SQL
 ```bash
 docker compose exec mysql mysql example_db
@@ -56,7 +56,7 @@ CREATE TABLE `bbs_entries` (
 ### (2) phpMyAdmin を利用する場合
 compose.yml に phpMyAdmin を追加し、GUIで作成可能
 
-## 6. ビルド & 起動
+## 4. ビルド & 起動
 ```bash
 docker compose build
 docker compose up -d
