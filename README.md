@@ -1,18 +1,5 @@
 # aw-edu01 EC2 デプロイ手順書
 
-## 1. EC2 インスタンス準備
-- AMI: Amazon Linux 2023
-- インスタンスタイプ: t3.small 以上推奨
-- セキュリティグループ
-  - 22/tcp (SSH)
-  - 80/tcp (HTTP)
-  - 443/tcp (HTTPS)
-
-SSH 接続:
-```bash
-ssh -i your-key.pem ec2-user@<EC2_PUBLIC_IP>
-```
-
 ## 1. Docker / Docker Compose インストール
 ```bash
 
