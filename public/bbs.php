@@ -18,6 +18,10 @@ if (empty($_SESSION['token'])) {
     $_SESSION['token'] = bin2hex(random_bytes(32));
 }
 
+$perPage = 10;
+$page = isset($_GET['page']) && ctype_digit($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($page - 1) * $perPage;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($_POST['token']) || !hash_equals($_SESSION['token'], $_POST['token'])) {
         http_response_code(400);
@@ -25,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!isset($_POST['body']) || trim($_POST['body']) === '') {
-        header('Location: ./bbs.php');
+        header('Location: ./bbs.php?page=' . $page);
         exit;
     }
 
@@ -33,11 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_FILES['image']) && is_array($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
         if ($_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-            header('Location: ./bbs.php');
+            header('Location: ./bbs.php?page=' . $page);
             exit;
         }
         if (!is_uploaded_file($_FILES['image']['tmp_name'])) {
-            header('Location: ./bbs.php');
+            header('Location: ./bbs.php?page=' . $page);
             exit;
         }
 
@@ -56,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $filepath = rtrim($imgDir, '/') . '/' . $image_filename;
 
         if (!move_uploaded_file($_FILES['image']['tmp_name'], $filepath)) {
-            header('Location: ./bbs.php');
+            header('Location: ./bbs.php?page=' . $page);
             exit;
         }
         @chmod($filepath, 0644);
@@ -69,11 +73,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':image_filename' => $image_filename,
     ]);
 
-    header('Location: ./bbs.php');
+    header('Location: ./bbs.php?page=' . $page);
     exit;
 }
 
-$rows = $dbh->query('SELECT id, body, image_filename, created_at FROM bbs_entries ORDER BY created_at DESC')->fetchAll();
+// 総投稿数取得
+$totalStmt = $dbh->query('SELECT COUNT(*) FROM bbs_entries');
+$totalCount = (int)$totalStmt->fetchColumn();
+$totalPages = (int)ceil($totalCount / $perPage);
+
+// ページ分の投稿を取得
+$stmt = $dbh->prepare('SELECT id, body, image_filename, created_at FROM bbs_entries ORDER BY created_at DESC LIMIT :limit OFFSET :offset');
+$stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
+$rows = $stmt->fetchAll();
 
 function autolink_reply_anchors(string $safeText): string {
     $pattern = '/(&gt;){2}(\d{1,10})/u';
@@ -92,7 +106,7 @@ function autolink_reply_anchors(string $safeText): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/css/bbs.css">
   <style>
-    body { max-width: 720px; margin: 2rem auto; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; }
+    body { max-width: 720px; margin: 2rem auto; font-family: system-ui, sans-serif; }
     textarea { width: 100%; height: 8rem; }
     .entry { margin-bottom: 1.25em; padding: 1em 0; border-bottom: 1px solid #ddd; scroll-margin-top: 1.5rem; }
     .entry-header { display: flex; align-items: baseline; gap: .5rem; }
@@ -106,12 +120,14 @@ function autolink_reply_anchors(string $safeText): string {
     .reply-anchor:hover { text-decoration: underline; }
     .highlight { background: #fff6d6; transition: background 1.2s ease; }
     img.post-image { max-height: 10em; height: auto; }
+    nav.pagination { text-align: center; margin-top: 2em; }
+    nav.pagination a, nav.pagination strong { margin: 0 0.4em; font-size: 1rem; }
   </style>
 </head>
 <body>
   <h1>画像付きBBS</h1>
 
-  <form id="bbs-form" method="POST" action="./bbs.php" enctype="multipart/form-data">
+  <form id="bbs-form" method="POST" action="./bbs.php?page=<?= $page ?>" enctype="multipart/form-data">
     <textarea name="body" required placeholder="本文を入力..."></textarea>
     <div style="margin: 1em 0;">
       <input id="image-input" type="file" accept="image/*" name="image">
@@ -135,7 +151,7 @@ function autolink_reply_anchors(string $safeText): string {
         <span class="entry-no">No.<?= $id ?></span>
         <span class="entry-meta"><?= $safeCreated ?></span>
         <div class="entry-actions">
-          <button class="reply-btn" type="button" data-reply-id="<?= $id ?>"><?=$id ?></button>
+          <button class="reply-btn" type="button" data-reply-id="<?= $id ?>"><?= $id ?></button>
           <a class="permalink" href="#post-<?= $id ?>" title="この投稿へのリンク">#</a>
         </div>
       </div>
@@ -150,43 +166,24 @@ function autolink_reply_anchors(string $safeText): string {
     </article>
   <?php endforeach; ?>
 
-  <script src="/js/image-compress-upload.js" defer></script>
+  <?php if ($totalPages > 1): ?>
+    <nav class="pagination">
+      <?php if ($page > 1): ?>
+        <a href="?page=<?= $page - 1 ?>">« 前へ</a>
+      <?php endif; ?>
+      <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+        <?php if ($i === $page): ?>
+          <strong><?= $i ?></strong>
+        <?php else: ?>
+          <a href="?page=<?= $i ?>"><?= $i ?></a>
+        <?php endif; ?>
+      <?php endfor; ?>
+      <?php if ($page < $totalPages): ?>
+        <a href="?page=<?= $page + 1 ?>">次へ »</a>
+      <?php endif; ?>
+    </nav>
+  <?php endif; ?>
 
   <script>
   (function() {
-    const form = document.getElementById('bbs-form');
-    const textarea = form?.querySelector('textarea[name="body"]');
-
-    document.addEventListener('click', (e) => {
-      const btn = e.target.closest('.reply-btn');
-      if (!btn || !textarea) return;
-      const id = btn.getAttribute('data-reply-id');
-      if (!id) return;
-
-      const insert = `>>${id} `;
-      const start = textarea.selectionStart ?? textarea.value.length;
-      const end   = textarea.selectionEnd ?? textarea.value.length;
-      const before = textarea.value.slice(0, start);
-      const after  = textarea.value.slice(end);
-      textarea.value = before + insert + after;
-      const pos = (before + insert).length;
-      textarea.setSelectionRange?.(pos, pos);
-      textarea.focus();
-      window.scrollTo({ top: form.offsetTop - 16, behavior: 'smooth' });
-    });
-
-    function highlightFromHash() {
-      const id = location.hash && location.hash.startsWith('#post-') ? location.hash.substring(6) : null;
-      if (!id) return;
-      const el = document.getElementById(`post-${id}`);
-      if (!el) return;
-      el.classList.add('highlight');
-      setTimeout(() => el.classList.remove('highlight'), 1600);
-    }
-    window.addEventListener('hashchange', highlightFromHash);
-    document.addEventListener('DOMContentLoaded', highlightFromHash);
-  })();
-  </script>
-</body>
-</html>
-
+   
