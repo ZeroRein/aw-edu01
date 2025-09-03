@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   web:
     image: nginx:latest
@@ -9,28 +11,32 @@ services:
       - image:/var/www/upload/image/
     depends_on:
       - php
+
   php:
-     container_name: php
-     build:
-       context: .
-       target: php
-     volumes:
-       - ./public/:/var/www/public/
-       - image:/var/www/upload/image/
+    container_name: php
+    build:
+      context: .
+      target: php
+    volumes:
+      - ./public/:/var/www/public/
+      - image:/var/www/upload/image/
+
   mysql:
     container_name: mysql
-    image: mysql:8.4
+    image: mysql:8.0  # mysql:8.4は存在しませんので8.0を指定
     environment:
       MYSQL_DATABASE: example_db
-      MYSQL_ALLOW_EMPTY_PASSWORD: 1
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"  # 1を"yes"に変更推奨
       TZ: Asia/Tokyo
     volumes:
       - mysql:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # ここを追加！
     command: >
       mysqld
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
       --max_allowed_packet=4MB
+
 volumes:
   mysql:
   image:
