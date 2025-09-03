@@ -27,14 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(400);
         exit('Invalid CSRF token.');
     }
-
     if (!isset($_POST['body']) || trim($_POST['body']) === '') {
         header('Location: ./bbs.php?page=' . $page);
         exit;
     }
-
     $image_filename = null;
-
     if (isset($_FILES['image']) && is_array($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
         if ($_FILES['image']['error'] !== UPLOAD_ERR_OK) {
             header('Location: ./bbs.php?page=' . $page);
@@ -44,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ./bbs.php?page=' . $page);
             exit;
         }
-
         $imgDir = '/var/www/upload/image';
         if (!is_dir($imgDir)) {
             if (!mkdir($imgDir, 0755, true) && !is_dir($imgDir)) {
@@ -52,48 +48,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit('Failed to create image directory.');
             }
         }
-
-        $pathinfo  = pathinfo($_FILES['image']['name']);
+        $pathinfo = pathinfo($_FILES['image']['name']);
         $extension = strtolower($pathinfo['extension'] ?? 'jpg');
-
         $image_filename = sprintf('%d_%s.%s', time(), bin2hex(random_bytes(8)), $extension);
         $filepath = rtrim($imgDir, '/') . '/' . $image_filename;
-
         if (!move_uploaded_file($_FILES['image']['tmp_name'], $filepath)) {
             header('Location: ./bbs.php?page=' . $page);
             exit;
         }
         @chmod($filepath, 0644);
     }
-
     $sql = "INSERT INTO bbs_entries (body, image_filename) VALUES (:body, :image_filename)";
     $stmt = $dbh->prepare($sql);
     $stmt->execute([
         ':body' => $_POST['body'],
         ':image_filename' => $image_filename,
     ]);
-
     header('Location: ./bbs.php?page=' . $page);
     exit;
 }
 
-// 総投稿数取得
+// 総投稿数と総ページ数
 $totalStmt = $dbh->query('SELECT COUNT(*) FROM bbs_entries');
 $totalCount = (int)$totalStmt->fetchColumn();
 $totalPages = (int)ceil($totalCount / $perPage);
 
-// ページ分の投稿を取得
+// 投稿の取得（ページネーション付き）
 $stmt = $dbh->prepare('SELECT id, body, image_filename, created_at FROM bbs_entries ORDER BY created_at DESC LIMIT :limit OFFSET :offset');
 $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $rows = $stmt->fetchAll();
 
-function autolink_reply_anchors(string $safeText): string {
+// 指定された投稿IDが何ページ目にあるかを返す関数
+function getPostPage(PDO $dbh, int $postId, int $perPage): ?int {
+    $sql = "SELECT COUNT(*) FROM bbs_entries WHERE id > :id";
+    $stmt = $dbh->prepare($sql);
+    $stmt->execute([':id' => $postId]);
+    $count = (int)$stmt->fetchColumn();
+    return ($count >= 0) ? (int)floor($count / $perPage) + 1 : null;
+}
+
+// レスアンカーをページ付きリンクへ変換する関数
+function autolink_reply_anchors(string $safeText, PDO $dbh, int $perPage): string {
     $pattern = '/(&gt;){2}(\d{1,10})/u';
-    $repl = function(array $m): string {
-        $num = $m[2];
-        return '<a class="reply-anchor" href="#post-' . $num . '">&gt;&gt;' . $num . '</a>';
+    $repl = function (array $m) use ($dbh, $perPage): string {
+        $num = (int)$m[2];
+        $page = getPostPage($dbh, $num, $perPage);
+        if (!$page) {
+            return htmlspecialchars($m[0], ENT_QUOTES, 'UTF-8');
+        }
+        $url = sprintf('bbs.php?page=%d#post-%d', $page, $num);
+        return sprintf('<a class="reply-anchor" href="%s">&gt;&gt;%d</a>', htmlentities($url, ENT_QUOTES, 'UTF-8'), $num);
     };
     return preg_replace_callback($pattern, $repl, $safeText);
 }
@@ -126,7 +132,6 @@ function autolink_reply_anchors(string $safeText): string {
 </head>
 <body>
   <h1>画像付きBBS</h1>
-
   <form id="bbs-form" method="POST" action="./bbs.php?page=<?= $page ?>" enctype="multipart/form-data">
     <textarea name="body" required placeholder="本文を入力..."></textarea>
     <div style="margin: 1em 0;">
@@ -135,16 +140,14 @@ function autolink_reply_anchors(string $safeText): string {
     <input type="hidden" name="token" value="<?= htmlspecialchars($_SESSION['token'], ENT_QUOTES, 'UTF-8') ?>">
     <button type="submit">送信</button>
   </form>
-
   <hr>
-
   <?php foreach ($rows as $entry): ?>
     <?php
       $id = (int)$entry['id'];
       $safeCreated = htmlspecialchars($entry['created_at'] ?? '', ENT_QUOTES, 'UTF-8');
-      $safeBody    = htmlspecialchars($entry['body'] ?? '', ENT_QUOTES, 'UTF-8');
-      $linkedBody  = autolink_reply_anchors($safeBody);
-      $renderBody  = nl2br($linkedBody);
+      $safeBody = htmlspecialchars($entry['body'] ?? '', ENT_QUOTES, 'UTF-8');
+      $linkedBody = autolink_reply_anchors($safeBody, $dbh, $perPage);
+      $renderBody = nl2br($linkedBody);
     ?>
     <article id="post-<?= $id ?>" class="entry">
       <div class="entry-header">
@@ -152,7 +155,7 @@ function autolink_reply_anchors(string $safeText): string {
         <span class="entry-meta"><?= $safeCreated ?></span>
         <div class="entry-actions">
           <button class="reply-btn" type="button" data-reply-id="<?= $id ?>"><?= $id ?></button>
-          <a class="permalink" href="#post-<?= $id ?>" title="この投稿へのリンク">#</a>
+          <a class="permalink" href="bbs.php?page=<?= $page ?>#post-<?= $id ?>" title="この投稿へのリンク">#</a>
         </div>
       </div>
       <div class="entry-body">
@@ -168,9 +171,7 @@ function autolink_reply_anchors(string $safeText): string {
 
   <?php if ($totalPages > 1): ?>
     <nav class="pagination">
-      <?php if ($page > 1): ?>
-        <a href="?page=<?= $page - 1 ?>">« 前へ</a>
-      <?php endif; ?>
+      <?php if ($page > 1): ?><a href="?page=<?= $page - 1 ?>">« 前へ</a><?php endif; ?>
       <?php for ($i = 1; $i <= $totalPages; $i++): ?>
         <?php if ($i === $page): ?>
           <strong><?= $i ?></strong>
@@ -178,12 +179,43 @@ function autolink_reply_anchors(string $safeText): string {
           <a href="?page=<?= $i ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
-      <?php if ($page < $totalPages): ?>
-        <a href="?page=<?= $page + 1 ?>">次へ »</a>
-      <?php endif; ?>
+      <?php if ($page < $totalPages): ?><a href="?page=<?= $page + 1 ?>">次へ »</a><?php endif; ?>
     </nav>
   <?php endif; ?>
 
+  <script src="/js/image-compress-upload.js" defer></script>
   <script>
   (function() {
-   
+    const form = document.getElementById('bbs-form');
+    const textarea = form?.querySelector('textarea[name="body"]');
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.reply-btn');
+      if (!btn || !textarea) return;
+      const id = btn.getAttribute('data-reply-id');
+      if (!id) return;
+      const insert = `>>${id} `;
+      const start = textarea.selectionStart ?? textarea.value.length;
+      const end = textarea.selectionEnd ?? textarea.value.length;
+      textarea.value = textarea.value.slice(0, start) + insert + textarea.value.slice(end);
+      const pos = start + insert.length;
+      textarea.setSelectionRange?.(pos, pos);
+      textarea.focus();
+      window.scrollTo({ top: form.offsetTop - 16, behavior: 'smooth' });
+    });
+
+    function highlightFromHash() {
+      const hash = location.hash;
+      if (!hash.startsWith('#post-')) return;
+      const id = hash.slice(6);
+      const el = document.getElementById(`post-${id}`);
+      if (!el) return;
+      el.classList.add('highlight');
+      setTimeout(() => el.classList.remove('highlight'), 1600);
+    }
+    window.addEventListener('hashchange', highlightFromHash);
+    window.addEventListener('DOMContentLoaded', highlightFromHash);
+  })();
+  </script>
+</body>
+</html>
