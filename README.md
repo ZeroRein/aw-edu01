@@ -26,9 +26,33 @@ mkdir -p ~/apps && cd ~/apps
 git clone https://github.com/ZeroRein/aw-edu01.git
 cd aw-edu01
 ```
+## 3. 
+```bash
+sudo yum install vim -y
+sudo yum install screen -y
+```
+vim ~/.vimrc
+```bash
+set number
+set expandtab
+set tabstop=2
+set shiftwidth=2
+set autoindent
+set visualbell
+```
+
+vim ~/.screenrc
+```bash
+hardstatus alwayslastline "%{= bw}%-w%{= wk}%n%t*%{-}%+w"
+## スクロール行数
+defscrollback 10000
+
+## マウススクロール有効
+termcapinfo xterm* ti@:te@
+```
 
 
-## 3. ビルド & 起動
+## 4. ビルド & 起動
 ```bash
 docker compose build
 docker compose up -d
